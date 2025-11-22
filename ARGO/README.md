@@ -2,6 +2,22 @@
 
 **Professional-grade Project Management Office platform with AI-powered capabilities.**
 
+---
+
+## 🚀 INSTALACIÓN RÁPIDA (Windows)
+
+**¿Primera vez instalando ARGO?** Sigue esta guía simple:
+
+1. Descarga el ZIP: [Última versión](https://github.com/carlosdegoycoechea-dotcom/ARGO-v10/archive/refs/heads/claude/initial-setup-01LBBMg5Hz5CeVrQRjznjHD9.zip)
+2. Extrae en `C:\Users\TU_USUARIO\ARGO\`
+3. Ejecuta `INSTALAR.bat`
+4. Edita `.env` y agrega tu OpenAI API key
+5. Ejecuta `INICIAR.bat`
+
+📖 **[Ver Guía Completa de Instalación](GUIA_INSTALACION_RAPIDA.md)**
+
+---
+
 ## Overview
 
 ARGO is a full-stack enterprise platform that combines modern web technologies with advanced AI capabilities to deliver intelligent project management solutions.

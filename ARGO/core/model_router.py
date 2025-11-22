@@ -48,38 +48,18 @@ class ModelRouter:
     
     def __init__(
         self,
-        providers: Dict[str, BaseProvider] = None,
-        provider_manager=None,
-        config=None,
+        providers: Dict[str, BaseProvider],
+        config: RouterConfig,
         db_manager=None  # UnifiedDatabase instance
     ):
-        # Accept either providers dict or provider_manager
-        if provider_manager:
-            self.providers = provider_manager.get_all_providers()
-        elif providers:
-            self.providers = providers
-        else:
-            self.providers = {}
-
-        # Handle config - can be RouterConfig or dict
-        if isinstance(config, RouterConfig):
-            self.config = config
-        elif isinstance(config, dict):
-            # Create RouterConfig from dict
-            self.config = RouterConfig(
-                pricing=config.get('pricing', {}),
-                budget=config.get('budget', {}),
-                defaults=config.get('defaults', {})
-            )
-        else:
-            # Default config
-            self.config = RouterConfig(pricing={}, budget={}, defaults={})
-
+        self.providers = providers
+        self.config = config
         self.db = db_manager
-
-        budget_monthly = self.config.budget.get('monthly_usd', 0)
+        
         logger.info(
-            f"ModelRouter inicializado - Providers: {list(self.providers.keys())}, Budget: ${budget_monthly}/month"
+            f"ModelRouter inicializado - "
+            f"Providers: {list(providers.keys())}, "
+            f"Budget: ${config.budget.get('monthly_usd', 0)}/month"
         )
     
     def route(
@@ -143,11 +123,8 @@ class ModelRouter:
         # 5. Generar respuesta
         try:
             logger.debug(
-                "Routing request",
-                provider=provider_name,
-                model=model_name,
-                task_type=task_type,
-                project_type=project_type
+                f"Routing request - Provider: {provider_name}, Model: {model_name}, "
+                f"Task: {task_type}, Project: {project_type}"
             )
             
             response = provider.generate(
@@ -176,10 +153,7 @@ class ModelRouter:
             
         except Exception as e:
             logger.error(
-                f"Error en route",
-                provider=provider_name,
-                model=model_name,
-                error=str(e)
+                f"Error en route - Provider: {provider_name}, Model: {model_name}, Error: {str(e)}"
             )
             
             # Intentar fallback si está configurado
@@ -273,11 +247,8 @@ class ModelRouter:
             )
             
             logger.debug(
-                "Usage tracked",
-                tokens=total_tokens,
-                cost_usd=round(cost, 4),
-                provider=response.provider,
-                model=response.model
+                f"Usage tracked - Tokens: {total_tokens}, Cost: ${round(cost, 4)}, "
+                f"Provider: {response.provider}, Model: {response.model}"
             )
             
         except Exception as e:
@@ -362,10 +333,7 @@ class ModelRouter:
         fallback_model = provider.default_model
         
         logger.info(
-            f"Fallback activado",
-            from_provider=failed_provider,
-            to_provider=fallback_provider,
-            model=fallback_model
+            f"Fallback activado - From: {failed_provider}, To: {fallback_provider}, Model: {fallback_model}"
         )
         
         return provider.generate(
