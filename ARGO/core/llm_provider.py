@@ -302,9 +302,64 @@ def create_provider(provider_name: str, api_key: str, default_model: str) -> Bas
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
     }
-    
+
     provider_class = providers.get(provider_name.lower())
     if not provider_class:
         raise ValueError(f"Proveedor desconocido: {provider_name}")
-    
+
     return provider_class(api_key=api_key, default_model=default_model)
+
+
+class LLMProviderManager:
+    """
+    Gestor de proveedores LLM
+    Inicializa y mantiene instancias de proveedores disponibles
+    """
+
+    def __init__(
+        self,
+        openai_api_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
+        config: Dict = None
+    ):
+        self.providers = {}
+        self.config = config or {}
+
+        # Inicializar OpenAI si hay API key
+        if openai_api_key:
+            try:
+                default_model = self.config.get("models.openai.default", "gpt-4o-mini")
+                self.providers["openai"] = OpenAIProvider(
+                    api_key=openai_api_key,
+                    default_model=default_model
+                )
+                logger.info("✅ OpenAI provider initialized")
+            except Exception as e:
+                logger.error(f"Failed to initialize OpenAI provider: {str(e)}")
+
+        # Inicializar Anthropic si hay API key
+        if anthropic_api_key:
+            try:
+                default_model = self.config.get("models.anthropic.default", "claude-3-5-sonnet-20241022")
+                self.providers["anthropic"] = AnthropicProvider(
+                    api_key=anthropic_api_key,
+                    default_model=default_model
+                )
+                logger.info("✅ Anthropic provider initialized")
+            except Exception as e:
+                logger.error(f"Failed to initialize Anthropic provider: {str(e)}")
+
+        if not self.providers:
+            logger.warning("⚠️ No LLM providers initialized - please configure API keys")
+
+    def get_provider(self, provider_name: str) -> Optional[BaseProvider]:
+        """Obtiene un proveedor por nombre"""
+        return self.providers.get(provider_name.lower())
+
+    def get_all_providers(self) -> Dict[str, BaseProvider]:
+        """Obtiene todos los proveedores disponibles"""
+        return self.providers.copy()
+
+    def is_available(self, provider_name: str) -> bool:
+        """Verifica si un proveedor está disponible"""
+        return provider_name.lower() in self.providers

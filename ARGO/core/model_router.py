@@ -48,18 +48,38 @@ class ModelRouter:
     
     def __init__(
         self,
-        providers: Dict[str, BaseProvider],
-        config: RouterConfig,
+        providers: Dict[str, BaseProvider] = None,
+        provider_manager=None,
+        config=None,
         db_manager=None  # UnifiedDatabase instance
     ):
-        self.providers = providers
-        self.config = config
+        # Accept either providers dict or provider_manager
+        if provider_manager:
+            self.providers = provider_manager.get_all_providers()
+        elif providers:
+            self.providers = providers
+        else:
+            self.providers = {}
+
+        # Handle config - can be RouterConfig or dict
+        if isinstance(config, RouterConfig):
+            self.config = config
+        elif isinstance(config, dict):
+            # Create RouterConfig from dict
+            self.config = RouterConfig(
+                pricing=config.get('pricing', {}),
+                budget=config.get('budget', {}),
+                defaults=config.get('defaults', {})
+            )
+        else:
+            # Default config
+            self.config = RouterConfig(pricing={}, budget={}, defaults={})
+
         self.db = db_manager
-        
+
+        budget_monthly = self.config.budget.get('monthly_usd', 0)
         logger.info(
-            "ModelRouter inicializado",
-            providers=list(providers.keys()),
-            budget_monthly=config.budget.get('monthly_usd', 0)
+            f"ModelRouter inicializado - Providers: {list(self.providers.keys())}, Budget: ${budget_monthly}/month"
         )
     
     def route(
