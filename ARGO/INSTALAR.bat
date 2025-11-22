@@ -72,17 +72,20 @@ if not exist .env (
     echo AVISO: No se encontro archivo .env
     echo.
     echo Creando .env desde plantilla...
-    echo # ARGO v10 - Configuracion> .env
-    echo.>> .env
-    echo # OpenAI API Key (OBLIGATORIO^)>> .env
-    echo OPENAI_API_KEY=sk-tu-api-key-aqui>> .env
-    echo.>> .env
-    echo # Anthropic API Key (OPCIONAL^)>> .env
-    echo ANTHROPIC_API_KEY=sk-ant-tu-api-key-aqui>> .env
-    echo.>> .env
-    echo # Configuracion>> .env
-    echo ENVIRONMENT=development>> .env
-    echo LOG_LEVEL=INFO>> .env
+    copy .env.example .env >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo # ARGO v10 - Configuracion> .env
+        echo.>> .env
+        echo # OpenAI API Key (OBLIGATORIO^)>> .env
+        echo OPENAI_API_KEY=sk-tu-api-key-aqui>> .env
+        echo.>> .env
+        echo # Anthropic API Key (OPCIONAL^)>> .env
+        echo ANTHROPIC_API_KEY=sk-ant-tu-api-key-aqui>> .env
+        echo.>> .env
+        echo # Configuracion>> .env
+        echo ENVIRONMENT=development>> .env
+        echo LOG_LEVEL=INFO>> .env
+    )
     echo.
     echo IMPORTANTE: Edita el archivo .env y agrega tu OPENAI_API_KEY
     echo.

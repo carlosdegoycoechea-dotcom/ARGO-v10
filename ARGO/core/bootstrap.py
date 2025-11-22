@@ -151,15 +151,22 @@ class ARGOBootstrap:
         if not openai_key:
             raise ValueError("OPENAI_API_KEY required in .env")
 
-        # Initialize provider manager (solo necesita config)
-        # Las API keys se leen desde config o environment dentro de LLMProviderManager
+        # Initialize provider manager
         provider_manager = LLMProviderManager(config=self.config)
 
-        # Create router
+        # Create RouterConfig from settings
+        from core.model_router import RouterConfig
+        router_config = RouterConfig(
+            pricing=self.config.get('pricing', {}),
+            budget=self.config.get('budget', {}),
+            defaults=self.config.get('router_defaults', {})
+        )
+
+        # Create router - ModelRouter expects providers dict, not provider_manager
         router = ModelRouter(
-            provider_manager=provider_manager,
-            db_manager=self.unified_db,
-            config=self.config
+            providers=provider_manager.providers,  # Pass the providers dict
+            config=router_config,                   # Pass RouterConfig, not general config
+            db_manager=self.unified_db
         )
 
         logger.debug(
