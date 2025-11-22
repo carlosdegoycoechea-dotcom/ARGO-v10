@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import hashlib
 import numpy as np
 
-from langchain.schema import HumanMessage
+from langchain_core.messages import HumanMessage
 
 from core.config import get_config
 from core.logger import get_logger
