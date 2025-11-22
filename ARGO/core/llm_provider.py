@@ -302,9 +302,117 @@ def create_provider(provider_name: str, api_key: str, default_model: str) -> Bas
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
     }
-    
+
     provider_class = providers.get(provider_name.lower())
     if not provider_class:
         raise ValueError(f"Proveedor desconocido: {provider_name}")
-    
+
     return provider_class(api_key=api_key, default_model=default_model)
+
+
+class LLMProviderManager:
+    """
+    Gestor de múltiples proveedores LLM
+    Maneja OpenAI, Anthropic y otros proveedores
+    """
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Inicializa el gestor de proveedores
+
+        Args:
+            config: Configuración con API keys y modelos por defecto
+        """
+        self.config = config
+        self.providers: Dict[str, BaseProvider] = {}
+        self._initialize_providers()
+
+    def _initialize_providers(self):
+        """Inicializa todos los proveedores configurados"""
+        apis_config = self.config.get('apis', {})
+
+        # Inicializar OpenAI si está configurado
+        openai_config = apis_config.get('openai', {})
+        if openai_config.get('enabled', True):
+            api_key = openai_config.get('api_key') or os.environ.get('OPENAI_API_KEY')
+            if api_key:
+                try:
+                    self.providers['openai'] = create_provider(
+                        'openai',
+                        api_key,
+                        openai_config.get('default_model', 'gpt-4o')
+                    )
+                    logger.info("✅ OpenAI provider initialized")
+                except Exception as e:
+                    logger.warning(f"⚠️ OpenAI provider failed to initialize: {e}")
+
+        # Inicializar Anthropic si está configurado
+        anthropic_config = apis_config.get('anthropic', {})
+        if anthropic_config.get('enabled', False):
+            api_key = anthropic_config.get('api_key') or os.environ.get('ANTHROPIC_API_KEY')
+            if api_key:
+                try:
+                    self.providers['anthropic'] = create_provider(
+                        'anthropic',
+                        api_key,
+                        anthropic_config.get('default_model', 'claude-3-5-sonnet-20241022')
+                    )
+                    logger.info("✅ Anthropic provider initialized")
+                except Exception as e:
+                    logger.warning(f"⚠️ Anthropic provider failed to initialize: {e}")
+
+        if not self.providers:
+            raise RuntimeError("No se pudo inicializar ningún proveedor LLM. Verifica tus API keys.")
+
+    def get_provider(self, provider_name: str) -> Optional[BaseProvider]:
+        """Obtiene un proveedor específico"""
+        return self.providers.get(provider_name.lower())
+
+    def has_provider(self, provider_name: str) -> bool:
+        """Verifica si un proveedor está disponible"""
+        return provider_name.lower() in self.providers
+
+    def list_providers(self) -> List[str]:
+        """Lista todos los proveedores disponibles"""
+        return list(self.providers.keys())
+
+    def generate(
+        self,
+        messages: List[Dict[str, str]],
+        provider: str = "openai",
+        model: Optional[str] = None,
+        temperature: float = 0.2,
+        max_tokens: Optional[int] = None,
+        tools: Optional[List] = None,
+        system_prompt: Optional[str] = None,
+        stream: bool = False,
+    ) -> LLMResponse:
+        """
+        Genera respuesta usando el proveedor especificado
+
+        Args:
+            messages: Lista de mensajes
+            provider: Nombre del proveedor ('openai', 'anthropic')
+            model: Modelo específico (usa default del proveedor si no se especifica)
+            ... otros parámetros
+
+        Returns:
+            LLMResponse con la respuesta generada
+        """
+        provider_obj = self.get_provider(provider)
+        if not provider_obj:
+            raise ValueError(f"Proveedor no disponible: {provider}. Disponibles: {self.list_providers()}")
+
+        # Usar modelo por defecto si no se especifica
+        if model is None:
+            model = provider_obj.default_model
+
+        return provider_obj.generate(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            system_prompt=system_prompt,
+            stream=stream
+        )
