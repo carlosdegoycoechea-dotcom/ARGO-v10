@@ -13,6 +13,7 @@ from core.logger import get_logger, initialize_logging, LogMessages
 from core.unified_database import UnifiedDatabase
 from core.model_router import ModelRouter
 from core.llm_provider import LLMProviderManager
+from core.plugins.manager import PluginManager
 
 logger = get_logger("Bootstrap")
 
@@ -36,6 +37,8 @@ class ARGOBootstrap:
         self.unified_db = None
         self.model_router = None
         self.library_manager = None
+        self.plugins = None
+        self.active_project = None
         self.initialized = False
     
     def initialize(self, project_name: Optional[str] = None) -> Dict[str, Any]:
@@ -86,13 +89,19 @@ class ARGOBootstrap:
         
         logger.info(LogMessages.system_init(f"Project: {project_name}"))
         project = self._ensure_project_exists(project_name)
+        self.active_project = project  # Store for plugins
         logger.info(f"Active project: {project['name']} ({project['project_type']})")
-        
+
         # Phase 7: Initialize project components
         logger.info(LogMessages.system_init("Project Components"))
         project_components = self._init_project_components(project)
         logger.info(LogMessages.system_ready("Project Components"))
-        
+
+        # Phase 7.5: Initialize Plugin System
+        logger.info(LogMessages.system_init("Plugin System"))
+        self.plugins = self._init_plugins()
+        logger.info(LogMessages.system_ready("Plugin System"))
+
         # Phase 8: Watchers (optional)
         watchers = None
         if self.config.get("monitoring.enabled", True):
@@ -112,6 +121,7 @@ class ARGOBootstrap:
             'unified_db': self.unified_db,
             'model_router': self.model_router,
             'library_manager': self.library_manager,
+            'plugins': self.plugins,
             'project': project,
             'project_components': project_components,
             'watchers': watchers,
@@ -341,17 +351,65 @@ class ARGOBootstrap:
         """Initialize monitoring watchers"""
         try:
             from monitoring.watchers import WatcherManager
-            
+
             watchers = WatcherManager(
                 unified_db=self.unified_db,
                 config=self.config,
                 project_id=project['id']
             )
-            
+
             return watchers
         except ImportError:
             logger.warning("Watchers module not found, monitoring disabled")
             return None
+
+    def _init_plugins(self) -> PluginManager:
+        """
+        Initialize Plugin System
+
+        Loads all plugins from the plugins directory.
+        Plugins are auto-discovered based on *_plugin.py naming pattern.
+
+        Returns:
+            PluginManager instance with all plugins loaded
+        """
+        try:
+            # Create plugin manager
+            plugin_manager = PluginManager(self)
+
+            # Get plugins directory from config or use default
+            plugins_dir = self.config.get("plugins.directory")
+            if plugins_dir:
+                plugins_path = Path(plugins_dir)
+            else:
+                # Default: ARGO/plugins
+                base_dir = Path(__file__).parent.parent
+                plugins_path = base_dir / "plugins"
+
+            # Load plugins if directory exists
+            if plugins_path.exists():
+                logger.info(f"Loading plugins from: {plugins_path}")
+                plugin_manager.load_from_directory(plugins_path)
+
+                # Log loaded plugins
+                plugins_list = plugin_manager.list_plugins()
+                if plugins_list:
+                    logger.info(f"Loaded {len(plugins_list)} plugins:")
+                    for plugin in plugins_list:
+                        logger.info(f"  - {plugin['name']} v{plugin['version']}")
+                else:
+                    logger.info("No plugins loaded")
+            else:
+                logger.info(f"Plugins directory not found: {plugins_path}")
+                logger.info("Plugin system initialized but no plugins loaded")
+
+            return plugin_manager
+
+        except Exception as e:
+            logger.error(f"Plugin system initialization failed: {e}")
+            logger.warning("Continuing without plugins")
+            # Return empty plugin manager so system doesn't break
+            return PluginManager(self)
 
 
 # Singleton instance
