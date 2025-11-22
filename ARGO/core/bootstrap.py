@@ -144,32 +144,29 @@ class ARGOBootstrap:
         Initialize Model Router
         This is the ONLY way to call LLMs - no direct instantiation allowed
         """
-        # Get API keys
+        # Get API keys (verificar que existan en .env)
         openai_key = os.getenv("OPENAI_API_KEY")
         anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-        
+
         if not openai_key:
             raise ValueError("OPENAI_API_KEY required in .env")
-        
-        # Initialize provider manager
-        provider_manager = LLMProviderManager(
-            openai_api_key=openai_key,
-            anthropic_api_key=anthropic_key,
-            config=self.config
-        )
-        
+
+        # Initialize provider manager (solo necesita config)
+        # Las API keys se leen desde config o environment dentro de LLMProviderManager
+        provider_manager = LLMProviderManager(config=self.config)
+
         # Create router
         router = ModelRouter(
             provider_manager=provider_manager,
             db_manager=self.unified_db,
             config=self.config
         )
-        
+
         logger.debug(
             f"Model Router: OpenAI={'enabled' if openai_key else 'disabled'}, "
             f"Anthropic={'enabled' if anthropic_key else 'disabled'}"
         )
-        
+
         return router
     
     def _init_library_manager(self):
